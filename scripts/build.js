@@ -37,6 +37,7 @@ execSync('npm run build --workspaces', { stdio: 'inherit', cwd: root });
 // also build container image if sandboxing is enabled
 // skip (-s) npm install + build since we did that above
 try {
+  console.log("Hello");
   execSync('node scripts/sandbox_command.js -q', {
     stdio: 'inherit',
     cwd: root,

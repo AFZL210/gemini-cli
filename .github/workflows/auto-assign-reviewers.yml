@@ -21,12 +21,11 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const minimatch = require('minimatch');
-            
-            const prNumber = context.payload.pull_request.number;
+
             const CODEOWNERS_PATH = path.join('.github', 'CODEOWNERS');
             const codeownersContent = fs.readFileSync(CODEOWNERS_PATH, 'utf8');
 
+            // Parse CODEOWNERS rules
             const rules = codeownersContent
               .split('\n')
               .filter(line => line.trim() && !line.startsWith('#'))
@@ -35,6 +34,9 @@ jobs:
                 return { pattern, owners };
               });
 
+            const prNumber = context.payload.pull_request.number;
+
+            // Get changed files
             const { data: filesChanged } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -46,25 +48,32 @@ jobs:
 
             for (const filePath of changedPaths) {
               for (const { pattern, owners } of rules) {
-                if (minimatch(filePath, pattern)) {
+                // Very basic match logic (you can enhance this)
+                if (
+                  pattern === '*' ||
+                  filePath === pattern ||
+                  filePath.startsWith(pattern.replace(/\*$/, '')) ||
+                  (pattern.endsWith('.md') && filePath.endsWith('.md'))
+                ) {
                   owners.forEach(o => matchedOwners.add(o));
                 }
               }
             }
 
+            // Clean and split into users and teams
             const reviewers = [];
             const team_reviewers = [];
 
             for (const owner of matchedOwners) {
               const cleaned = owner.startsWith('@') ? owner.slice(1) : owner;
               if (cleaned.includes('/')) {
-                const teamSlug = cleaned.split('/')[1];
-                team_reviewers.push(teamSlug);
+                team_reviewers.push(cleaned.split('/')[1]);
               } else {
                 reviewers.push(cleaned);
               }
             }
 
+            // Get already assigned reviewers
             const { data: current } = await github.rest.pulls.listRequestedReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -87,8 +96,9 @@ jobs:
                 reviewers: reviewersToAssign,
                 team_reviewers: teamsToAssign
               });
+
               console.log(`Assigned reviewers: ${reviewersToAssign.join(', ')}`);
-              console.log(`Assigned team reviewers: ${teamsToAssign.join(', ')}`);
+              console.log(`Assigned teams: ${teamsToAssign.join(', ')}`);
             } else {
               console.log('No new reviewers to assign.');
             }

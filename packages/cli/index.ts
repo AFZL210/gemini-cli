@@ -12,6 +12,7 @@ import { main } from './src/gemini.js';
 // --- Global Entry Point ---
 main().catch((error) => {
   console.error('An unexpected critical error occurred:');
+  console.log("Testing");
   if (error instanceof Error) {
     console.error(error.stack);
   } else {
